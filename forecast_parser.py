@@ -106,4 +106,30 @@ def process_forecasts(config):
                         })
                 except Exception as e:
                     print(f"⚠️ Error in {file}: {e}")
-    return pd.DataFrame(summary_blocks)
+
+    df_summary = pd.DataFrame(summary_blocks)
+    if df_summary.empty:
+        return df_summary
+
+    # Extract start and end times from Window using same date for both
+    time_parts = df_summary["Window"].str.extract(r'(\d{2}/\d{2}) (\d{2}):(\d{2})-(\d{2}):(\d{2})')
+    start_str = time_parts.apply(lambda x: f"{x[0]} {x[1]}:{x[2]}", axis=1)
+    end_str = time_parts.apply(lambda x: f"{x[0]} {x[3]}:{x[4]}", axis=1)
+    df_summary["Start"] = pd.to_datetime(start_str, format="%d/%m %H:%M", errors='coerce')
+    df_summary["End"] = pd.to_datetime(end_str, format="%d/%m %H:%M", errors='coerce')
+
+    # Adjust for overnight end time
+    df_summary.loc[df_summary["End"] < df_summary["Start"], "End"] += pd.to_timedelta(1, unit='d')
+
+    df_summary["Duration"] = (df_summary["End"] - df_summary["Start"]).dt.total_seconds() / 3600
+
+    # Normalize values
+    df_summary["Norm_Wind"] = (df_summary["Avg Wind (knots)"] - df_summary["Avg Wind (knots)"].min()) / (df_summary["Avg Wind (knots)"].max() - df_summary["Avg Wind (knots)"].min())
+    df_summary["Norm_Duration"] = (df_summary["Duration"] - df_summary["Duration"].min()) / (df_summary["Duration"].max() - df_summary["Duration"].min())
+
+    # Weighted score
+    wind_weight = config.get("WIND_WEIGHT", 0.6)
+    duration_weight = config.get("DURATION_WEIGHT", 0.4)
+    df_summary["Score"] = wind_weight * df_summary["Norm_Wind"] + duration_weight * df_summary["Norm_Duration"]
+
+    return df_summary.sort_values(by="Score", ascending=False)

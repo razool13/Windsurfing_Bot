@@ -48,7 +48,7 @@ def dataframe_to_image(df, output_path):
 
 def create_collage(df, graph_dir, output_path_1, top_n=5, cols=2, max_dim_px=1280):
     """
-    יוצר קולאז'ש של תמונות ומוודא שהתמונה הסופית תיהיה תקינה לשליחה כ-photo.
+    יוצר קולאז' של תמונות ומוודא שהתמונה הסופית תיהיה תקינה לשליחה כ-photo.
     """
     if not output_path_1.lower().endswith('.png'):
         output_path_1 = os.path.splitext(output_path_1)[0] + '.png'

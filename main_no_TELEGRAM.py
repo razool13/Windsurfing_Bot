@@ -7,7 +7,7 @@ from fetch import download_latest_forecast_zip
 import os
 
 def main():
-    #download_and_extract_zip(CONFIG)
+    # download_latest_forecast_zip(CONFIG)
     download_latest_forecast_zip(CONFIG)
     summary_df = process_forecasts(CONFIG)
 

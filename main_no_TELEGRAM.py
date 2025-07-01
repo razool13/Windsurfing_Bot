@@ -11,7 +11,9 @@ def main():
     download_latest_forecast_zip(CONFIG)
     summary_df = process_forecasts(CONFIG)
 
-    if not summary_df.empty:
+    if summary_df.empty:
+        print("📭 No forecasts found with strong wind.")
+    else:
         os.makedirs("output", exist_ok=True)
         summary_df.to_csv(CONFIG["CSV_SUMMARY"], index=False)
         table_img = dataframe_to_image(summary_df, CONFIG["TABLE_IMAGE"])
@@ -19,8 +21,7 @@ def main():
 
         # שולח גם את טבלת התמונה וגם את הקולאז'
         #send_forecast_summary(CONFIG, summary_df, table_img, collage_img)
-        send_images_only(CONFIG, table_img, collage_img)  
-        print("📭 No forecasts found with strong wind.")
+        send_images_only(CONFIG, table_img, collage_img)
 
 if __name__ == "__main__":
     main()

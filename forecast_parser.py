@@ -43,8 +43,18 @@ def save_site_plot(df, site_name, output_dir):
     forecast_start_date = df["Datetime"].min().date()
     tomorrow = forecast_start_date + timedelta(days=1)
     df_tomorrow = df[df["Datetime"].dt.date == tomorrow]
+ #   strong_hours = df_tomorrow[df_tomorrow["WindSpeed"] > 20]
+ #   msg = "Good for windsurfing tomorrow!" if len(strong_hours) >= 2 else "Not enough wind for good windsurfing tomorrow."
+# Check for strong and moderate wind hours
     strong_hours = df_tomorrow[df_tomorrow["WindSpeed"] > 20]
-    msg = "Good for windsurfing tomorrow!" if len(strong_hours) >= 2 else "Not enough wind for good windsurfing tomorrow."
+    moderate_hours = df_tomorrow[(df_tomorrow["WindSpeed"] > 15) & (df_tomorrow["WindSpeed"] <= 20)]
+    # Determine message
+    if len(strong_hours) >= 2:
+        msg = "Good for windsurfing tomorrow!"
+    elif len(moderate_hours) >= 2:
+        msg = "Good for WinG tomorrow!"
+    else:
+        msg = "Not enough wind for good windsurfing tomorrow."
 
     fig, ax = plt.subplots(figsize=(12, 5), dpi=300)
     sc = ax.scatter(df["Datetime"], df["WindSpeed"], c=df["WindSpeed"], cmap="plasma")

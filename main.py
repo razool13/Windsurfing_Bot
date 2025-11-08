@@ -16,12 +16,13 @@ def main():
     else:
         os.makedirs("output", exist_ok=True)
         summary_df.to_csv(CONFIG["CSV_SUMMARY"], index=False)
-        table_img = dataframe_to_image(summary_df, CONFIG["TABLE_IMAGE"])
+        rows_per_image = CONFIG.get("TABLE_ROWS_PER_IMAGE", 20)
+        table_imgs = dataframe_to_image(summary_df, CONFIG["TABLE_IMAGE"], rows_per_image)
         collage_img = create_collage(summary_df, CONFIG["GRAPH_DIR"], CONFIG["COLLAGE_FILE"])
 
         # שולח גם את טבלת התמונה וגם את הקולאז'
-        #send_forecast_summary(CONFIG, summary_df, table_img, collage_img)
-        send_images_only(CONFIG, table_img, collage_img)
+        #send_forecast_summary(CONFIG, summary_df, table_imgs, collage_img)
+        send_images_only(CONFIG, table_imgs, collage_img)
 
 if __name__ == "__main__":
     main()

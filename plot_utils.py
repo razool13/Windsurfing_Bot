@@ -1,3 +1,4 @@
+import glob
 import matplotlib.pyplot as plt
 from PIL import Image
 import os
@@ -24,27 +25,49 @@ def direction_to_arrow(degrees):
     else:
         return '↖'
 
-def dataframe_to_image(df, output_path):
-    df_filtered = df[["Site", "Window", "Avg Wind (knots)","Dir"]]
+def dataframe_to_image(df, output_path, max_rows_per_image=20):
+    df_filtered = df[["Site", "Window", "Avg Wind (knots)","Dir"]].copy()
+    output_dir = os.path.dirname(output_path)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    base_name, ext = os.path.splitext(output_path)
+    if not ext:
+        ext = ".png"
+
     if os.path.exists(output_path):
         os.remove(output_path)  # מחיקת קובץ קיים כדי להבטיח רענון
+    for stale_file in glob.glob(f"{base_name}_part*{ext}"):
+        os.remove(stale_file)
+
     df_filtered = df_filtered.reset_index(drop=True)
     if "Dir" in df_filtered.columns:
         df_filtered["Raw Dir"] = df_filtered["Dir"]  # שמירת הזווית המקורית
         df_filtered["Dir"] = df_filtered["Dir"].apply(direction_to_arrow)
 
-    fig, ax = plt.subplots(figsize=(df_filtered.shape[1]*2.5, df_filtered.shape[0]*0.6 + 1))
-    ax.axis('off')
-    table = ax.table(cellText=df_filtered.values, colLabels=df_filtered.columns, cellLoc='center', loc='center')
-    table.scale(1.2, 2)
-    for key, cell in table.get_celld().items():
-        cell.set_fontsize(12)
+    max_rows = max(1, int(max_rows_per_image))
+    chunks = [
+        df_filtered.iloc[start:start + max_rows].reset_index(drop=True)
+        for start in range(0, len(df_filtered), max_rows)
+    ]
+    image_paths = []
 
-    plt.tight_layout()
-    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.5, dpi=300)
-    plt.close()
-    print(f"✅ Saved table image to {output_path}")
-    return output_path
+    for idx, chunk in enumerate(chunks, start=1):
+        fig, ax = plt.subplots(figsize=(chunk.shape[1]*2.5, chunk.shape[0]*0.6 + 1))
+        ax.axis('off')
+        table = ax.table(cellText=chunk.values, colLabels=chunk.columns, cellLoc='center', loc='center')
+        table.scale(1.2, 2)
+        for key, cell in table.get_celld().items():
+            cell.set_fontsize(12)
+
+        plt.tight_layout()
+        target_path = output_path if len(chunks) == 1 else f"{base_name}_part{idx}{ext}"
+        plt.savefig(target_path, bbox_inches='tight', pad_inches=0.5, dpi=300)
+        plt.close()
+        print(f"✅ Saved table image to {target_path}")
+        image_paths.append(target_path)
+
+    return image_paths
 
 def create_collage(df, graph_dir, output_path_1, top_n=5, cols=2, max_dim_px=1280):
     """

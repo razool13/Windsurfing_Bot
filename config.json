@@ -5,6 +5,7 @@
   "GRAPH_DIR": "graphs",
   "COLLAGE_FILE": "forecast_collage.jpg",
   "CSV_SUMMARY": "wind_windows_summary.csv",
+  "TABLE_ROWS_PER_IMAGE": 15,
   "BOT_TOKEN": "7791502696:AAHkjNZqcySerosO7o1qUy5SEHvoKLptzVE",
   "CHAT_ID": "1566110920",
   "MIN_WIND_KNOTS": 20,

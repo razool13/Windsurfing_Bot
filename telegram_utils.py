@@ -37,11 +37,19 @@ def send_image(bot_token, chat_id, image_path):
 #    except Exception as e:
 #        print(f"❌ Exception while sending {image_path}: {e}")
 
-def send_images_only(config, table_img, collage_img):
-    print("📤 Sending table image to Telegram...")
-    send_image(config["BOT_TOKEN"], config["CHAT_ID"], table_img)
-    print("📤 Sending collage to Telegram...")
-    send_image(config["BOT_TOKEN"], config["CHAT_ID"], collage_img)
+def send_images_only(config, table_imgs, collage_img):
+    if not isinstance(table_imgs, (list, tuple)):
+        table_imgs = [table_imgs]
+    table_imgs = [img for img in table_imgs if img]
+
+    total_tables = len(table_imgs)
+    for idx, img_path in enumerate(table_imgs, start=1):
+        print(f"📤 Sending table image {idx}/{total_tables} to Telegram...")
+        send_image(config["BOT_TOKEN"], config["CHAT_ID"], img_path)
+
+    if collage_img:
+        print("📤 Sending collage to Telegram...")
+        send_image(config["BOT_TOKEN"], config["CHAT_ID"], collage_img)
     
 def send_forecast_summary(config, df, table_img, collage_img):
     message = u"\U0001F3C4\u200D\u2642\uFE0F \u05EA\u05D7\u05D6\u05D9\u05EA \u05DC\u05D2\u05DC\u05D9\u05E9\u05EA \u05E8\u05D5\u05D7:"
@@ -53,5 +61,9 @@ def send_forecast_summary(config, df, table_img, collage_img):
         data={"chat_id": config["CHAT_ID"], "text": message}
     )
 
-    send_image(config["BOT_TOKEN"], config["CHAT_ID"], table_img)
-    send_image(config["BOT_TOKEN"], config["CHAT_ID"], collage_img)
+    table_images = table_img if isinstance(table_img, (list, tuple)) else [table_img]
+    for img in [img for img in table_images if img]:
+        send_image(config["BOT_TOKEN"], config["CHAT_ID"], img)
+
+    if collage_img:
+        send_image(config["BOT_TOKEN"], config["CHAT_ID"], collage_img)

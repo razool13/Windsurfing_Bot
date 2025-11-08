@@ -7,6 +7,8 @@ CONFIG = {
     "CSV_SUMMARY": "output/wind_windows_summary.csv",
     "TABLE_IMAGE": "output/summary_table.png",
     "TABLE_ROWS_PER_IMAGE": 15,
+    "COLLAGE_MAX_SITES": 0,
+    "COLLAGE_GRAPHS_PER_IMAGE": 6,
     "BOT_TOKEN": "7791502696:AAHkjNZqcySerosO7o1qUy5SEHvoKLptzVE",
     "CHAT_ID_raz": "1566110920",
 	"CHAT_ID": "-1002643187165",

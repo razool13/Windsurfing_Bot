@@ -18,11 +18,19 @@ def main():
         summary_df.to_csv(CONFIG["CSV_SUMMARY"], index=False)
         rows_per_image = CONFIG.get("TABLE_ROWS_PER_IMAGE", 20)
         table_imgs = dataframe_to_image(summary_df, CONFIG["TABLE_IMAGE"], rows_per_image)
-        collage_img = create_collage(summary_df, CONFIG["GRAPH_DIR"], CONFIG["COLLAGE_FILE"])
+        collage_limit = CONFIG.get("COLLAGE_MAX_SITES", 0)
+        collage_limit = collage_limit if collage_limit and collage_limit > 0 else None
+        collage_imgs = create_collage(
+            summary_df,
+            CONFIG["GRAPH_DIR"],
+            CONFIG["COLLAGE_FILE"],
+            top_n=collage_limit,
+            graphs_per_collage=CONFIG.get("COLLAGE_GRAPHS_PER_IMAGE", 6),
+        )
 
         # שולח גם את טבלת התמונה וגם את הקולאז'
-        #send_forecast_summary(CONFIG, summary_df, table_imgs, collage_img)
-        send_images_only(CONFIG, table_imgs, collage_img)
+        #send_forecast_summary(CONFIG, summary_df, table_imgs, collage_imgs)
+        send_images_only(CONFIG, table_imgs, collage_imgs)
 
 if __name__ == "__main__":
     main()

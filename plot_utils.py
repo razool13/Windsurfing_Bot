@@ -69,50 +69,75 @@ def dataframe_to_image(df, output_path, max_rows_per_image=20):
 
     return image_paths
 
-def create_collage(df, graph_dir, output_path_1, top_n=5, cols=2, max_dim_px=1280):
-    """
-    יוצר קולאז' של תמונות ומוודא שהתמונה הסופית תיהיה תקינה לשליחה כ-photo.
-    """
+def create_collage(df, graph_dir, output_path_1, top_n=None, cols=2, max_dim_px=1280, graphs_per_collage=6):
+    '''
+    יוצר קולאז' של תמונות ומוודא שהתמונה הסופית תהיה תקינה לשליחה כ-photo.
+    מחלק את הגרפים למספר תמונות אם יש יותר מהמותר בקולאז' בודד.
+    '''
     if not output_path_1.lower().endswith('.png'):
         output_path_1 = os.path.splitext(output_path_1)[0] + '.png'
 
+    output_dir = os.path.dirname(output_path_1)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
+    base_name, ext = os.path.splitext(output_path_1)
+    if not ext:
+        ext = ".png"
+
     if os.path.exists(output_path_1):
         os.remove(output_path_1)
+    for stale_file in glob.glob(f"{base_name}_part*{ext}"):
+        os.remove(stale_file)
 
-    # שליפת התמונות
-    images = []
-    for _, row in df.head(top_n).iterrows():
+    df_subset = df.head(top_n) if top_n and top_n > 0 else df
+
+    image_paths = []
+    for _, row in df_subset.iterrows():
         image_path = os.path.join(graph_dir, row["Site"] + ".png")
         if os.path.exists(image_path):
-            images.append(Image.open(image_path).convert("RGBA"))
+            image_paths.append(image_path)
 
-    if not images:
+    if not image_paths:
         print("⚠️ No images found for collage.")
-        return None
+        return []
 
-    # קבעת גודל מקסימלי פר תמונה
-    base_width = min(img.width for img in images)
-    base_height = min(img.height for img in images)
+    chunk_size = max(1, int(graphs_per_collage))
+    collage_outputs = []
+    multi_part = len(image_paths) > chunk_size
 
-    # קבעת גודל הקולאז'
-    rows = (len(images) + cols - 1) // cols
-    collage_width = cols * base_width
-    collage_height = rows * base_height
+    for part_idx, start in enumerate(range(0, len(image_paths), chunk_size), start=1):
+        chunk_files = image_paths[start:start + chunk_size]
+        chunk_images = [Image.open(path).convert("RGBA") for path in chunk_files]
+        try:
+            base_width = min(img.width for img in chunk_images)
+            base_height = min(img.height for img in chunk_images)
+            chunk_cols = min(cols, len(chunk_images))
+            rows = (len(chunk_images) + chunk_cols - 1) // chunk_cols
+            collage_width = chunk_cols * base_width
+            collage_height = rows * base_height
 
-    # קנה מידה אם הקולאז' חורג מהממדים המומלצים
-    scale_factor = min(max_dim_px / collage_width, max_dim_px / collage_height, 1.0)
-    resized_width = int(collage_width * scale_factor)
-    resized_height = int(collage_height * scale_factor)
+            scale_factor = min(max_dim_px / collage_width, max_dim_px / collage_height, 1.0)
+            resized_width = int(collage_width * scale_factor)
+            resized_height = int(collage_height * scale_factor)
 
-    collage_array = Image.new("RGBA", (collage_width, collage_height), (255, 255, 255, 0))
+            collage_array = Image.new("RGBA", (collage_width, collage_height), (255, 255, 255, 0))
+            for idx, img in enumerate(chunk_images):
+                x = (idx % chunk_cols) * base_width
+                y = (idx // chunk_cols) * base_height
+                collage_array.paste(img.resize((base_width, base_height)), (x, y))
 
-    for idx, img in enumerate(images):
-        x = (idx % cols) * base_width
-        y = (idx // cols) * base_height
-        collage_array.paste(img.resize((base_width, base_height)), (x, y))
+            collage_array = collage_array.resize((resized_width, resized_height), Image.LANCZOS)
+            collage_array = collage_array.convert("RGB")
+            target_path = (
+                f"{base_name}_part{part_idx}{ext}"
+                if multi_part else output_path_1
+            )
+            collage_array.save(target_path, format='PNG')
+            print(f"✅ Saved resized collage PNG to {target_path} | {resized_width}x{resized_height}px")
+            collage_outputs.append(target_path)
+        finally:
+            for img in chunk_images:
+                img.close()
 
-    collage_array = collage_array.resize((resized_width, resized_height), Image.LANCZOS)
-    collage_array.convert("RGB").save(output_path_1, format='PNG')
-    print(f"✅ Saved resized collage PNG to {output_path_1} | {resized_width}x{resized_height}px")
-
-    return output_path_1
+    return collage_outputs

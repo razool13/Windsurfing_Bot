@@ -13,5 +13,5 @@ CONFIG = {
     "MIN_BLOCK_LENGTH": 2,
     "DAY_START_HOUR": 6,
     "DAY_END_HOUR": 20,
-    "TOP_SITES_TO_SEND": 5
+    "TOP_SITES_TO_SEND": 6
 }

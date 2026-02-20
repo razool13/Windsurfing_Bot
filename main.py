@@ -3,6 +3,7 @@ from forecast_parser import process_forecasts
 from plot_utils import dataframe_to_image, create_collage
 from telegram_utils import send_images_only
 from fetch import download_latest_forecast_zip
+from html_report import generate_html_report
 
 import os
 
@@ -27,6 +28,9 @@ def main():
             top_n=collage_limit,
             graphs_per_collage=CONFIG.get("COLLAGE_GRAPHS_PER_IMAGE", 6),
         )
+
+        # Generate cross-platform HTML report (viewable in any browser)
+        generate_html_report(summary_df, CONFIG, CONFIG["HTML_REPORT"])
 
         # שולח גם את טבלת התמונה וגם את הקולאז'
         #send_forecast_summary(CONFIG, summary_df, table_imgs, collage_imgs)

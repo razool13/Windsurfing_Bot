@@ -1,0 +1,58 @@
+name: Deploy Wind Forecast
+
+# Runs twice a day (6 AM and 4 PM Israel time = 04:00 and 14:00 UTC)
+# and on manual trigger
+on:
+  schedule:
+    - cron: "0 4,14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt selenium beautifulsoup4
+
+      - name: Generate forecast report
+        run: python ci_generate_report.py
+
+      - name: Prepare pages directory
+        run: cp output/wind_forecast_report.html output/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./output
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

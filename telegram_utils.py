@@ -44,6 +44,21 @@ def send_image(bot_token, chat_id, image_path):
 #    except Exception as e:
 #        print(f"❌ Exception while sending {image_path}: {e}")
 
+def send_document(bot_token, chat_id, file_path, caption=None):
+    """Send a file as a document to a Telegram chat."""
+    if not os.path.exists(file_path):
+        print(f"❌ File does NOT exist: {file_path}")
+        return
+    with open(file_path, 'rb') as f:
+        data = {"chat_id": chat_id}
+        if caption:
+            data["caption"] = caption
+        requests.post(
+            f"https://api.telegram.org/bot{bot_token}/sendDocument",
+            data=data,
+            files={"document": (os.path.basename(file_path), f)}
+        )
+
 def send_images_only(config, table_imgs, collage_imgs):
     table_imgs = _normalize_images(table_imgs)
     collage_imgs = _normalize_images(collage_imgs)

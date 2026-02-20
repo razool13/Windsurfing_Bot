@@ -6,6 +6,7 @@ CONFIG = {
     "COLLAGE_FILE": "output/forecast_collage.jpg",
     "CSV_SUMMARY": "output/wind_windows_summary.csv",
     "TABLE_IMAGE": "output/summary_table.png",
+    "HTML_REPORT": "output/wind_forecast_report.html",
     "TABLE_ROWS_PER_IMAGE": 15,
     "COLLAGE_MAX_SITES": 0,
     "COLLAGE_GRAPHS_PER_IMAGE": 6,

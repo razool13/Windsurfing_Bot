@@ -1,3 +1,5 @@
+import os
+
 CONFIG = {
     "ZIP_URL": "https://openskiron.org/kite_gribs/20250507-all_1km_files.zip",
     "ZIP_FILE": "data/forecast_data.zip",
@@ -10,9 +12,9 @@ CONFIG = {
     "TABLE_ROWS_PER_IMAGE": 15,
     "COLLAGE_MAX_SITES": 0,
     "COLLAGE_GRAPHS_PER_IMAGE": 6,
-    "BOT_TOKEN": "7791502696:AAHkjNZqcySerosO7o1qUy5SEHvoKLptzVE",
-    "CHAT_ID_raz": "1566110920",
-	"CHAT_ID": "-1002643187165",
+    "BOT_TOKEN": os.environ.get("BOT_TOKEN", ""),
+    "CHAT_ID_raz": os.environ.get("CHAT_ID_RAZ", ""),
+    "CHAT_ID": os.environ.get("CHAT_ID", ""),
     "MIN_WIND_KNOTS": 15,
     "MIN_BLOCK_LENGTH": 2,
     "DAY_START_HOUR": 6,

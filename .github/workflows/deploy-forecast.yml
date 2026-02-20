@@ -33,6 +33,10 @@ jobs:
           pip install -r requirements.txt selenium beautifulsoup4
 
       - name: Generate forecast report
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHAT_ID_RAZ: ${{ secrets.CHAT_ID_RAZ }}
         run: python ci_generate_report.py
 
       - name: Prepare pages directory

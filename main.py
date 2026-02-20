@@ -1,7 +1,7 @@
 from config import CONFIG
 from forecast_parser import process_forecasts
 from plot_utils import dataframe_to_image, create_collage
-from telegram_utils import send_images_only
+from telegram_utils import send_images_only, send_document
 from fetch import download_latest_forecast_zip
 from html_report import generate_html_report
 
@@ -31,6 +31,14 @@ def main():
 
         # Generate cross-platform HTML report (viewable in any browser)
         generate_html_report(summary_df, CONFIG, CONFIG["HTML_REPORT"])
+
+        # שולח את קובץ ה-HTML האינטראקטיבי לטלגרם
+        send_document(
+            CONFIG["BOT_TOKEN"],
+            CONFIG["CHAT_ID"],
+            CONFIG["HTML_REPORT"],
+            caption="\U0001F3C4 Wind Forecast — open in browser for interactive charts"
+        )
 
         # שולח גם את טבלת התמונה וגם את הקולאז'
         #send_forecast_summary(CONFIG, summary_df, table_imgs, collage_imgs)

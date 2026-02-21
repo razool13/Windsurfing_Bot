@@ -39,9 +39,6 @@ jobs:
           CHAT_ID_RAZ: ${{ secrets.CHAT_ID_RAZ }}
         run: python ci_generate_report.py
 
-      - name: Prepare pages directory
-        run: cp output/wind_forecast_report.html output/index.html
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

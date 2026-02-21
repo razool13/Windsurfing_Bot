@@ -6,7 +6,6 @@ from datetime import timedelta
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.io as pio
 
 from forecast_parser import parse_datetime
 from plot_utils import direction_to_arrow
@@ -150,6 +149,8 @@ def _build_summary_table(df_summary, chart_sites):
     header = (
         "<thead><tr>"
         "<th>Site</th>"
+        "<th>Window</th>"
+        "<th>Duration</th>"
         "<th>Avg Wind</th>"
         "<th>Dir</th>"
         "</tr></thead>"
@@ -159,6 +160,9 @@ def _build_summary_table(df_summary, chart_sites):
         site = row["Site"]
         wind = row["Avg Wind (knots)"]
         arrow = direction_to_arrow(row["Dir"])
+        window = row.get("Window", "")
+        duration = row.get("Duration", 0)
+        duration_str = f"{duration:.0f}h" if duration else ""
 
         if wind > 20:
             row_class = "wind-strong"
@@ -173,6 +177,8 @@ def _build_summary_table(df_summary, chart_sites):
         rows.append(
             f'<tr class="{row_class} table-row">'
             f"<td><strong>{site}</strong></td>"
+            f"<td>{window}</td>"
+            f"<td>{duration_str}</td>"
             f"<td>{badge}</td>"
             f"<td>{arrow}</td>"
             f"</tr>"
@@ -193,26 +199,19 @@ def generate_html_report(df_summary, config, output_path):
     sites = set(df_summary["Site"].tolist())
     site_data = _load_site_data(config, sites)
 
-    # Build per-site chart data (both HTML and stats)
-    chart_data = {}  # dict: site_name -> {html, stats}
-    include_js = True  # embed plotly.js only once (in the first chart)
+    # Build per-site chart data (figure JSON and stats)
+    chart_data = {}  # dict: site_name -> {figure, stats}
     for _, row in df_summary.iterrows():
         site = row["Site"]
         if site not in site_data:
             continue
         fig = _make_site_figure(site_data[site], site)
-        fragment = pio.to_html(
-            fig,
-            include_plotlyjs=include_js,
-            full_html=False,
-            config={"responsive": True},
-        )
+        fig_json = json.loads(fig.to_json())
         stats = _calculate_site_stats(site_data[site])
         chart_data[site] = {
-            "html": fragment,
+            "figure": fig_json,
             "stats": stats,
         }
-        include_js = False  # subsequent charts reuse the already-loaded plotly.js
 
     chart_sites = set(chart_data.keys())
 
@@ -228,6 +227,7 @@ def generate_html_report(df_summary, config, output_path):
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Wind Forecast Report</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     html {{ scroll-behavior: smooth; }}
     *, *::before, *::after {{ box-sizing: border-box; }}
@@ -248,8 +248,7 @@ def generate_html_report(df_summary, config, output_path):
     .header {{
       background: linear-gradient(135deg, #2c5f8a 0%, #1a3d5c 100%);
       color: #fff;
-      padding: 16px;
-      text-align: center;
+      padding: 14px 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       display: flex;
       justify-content: space-between;
@@ -259,14 +258,10 @@ def generate_html_report(df_summary, config, output_path):
       background: linear-gradient(135deg, #0d2d47 0%, #000 100%);
     }}
     h1 {{
-      font-size: 1.6em;
+      font-size: 1.4em;
       margin: 0;
       flex: 1;
       text-align: center;
-    }}
-    .header-buttons {{
-      display: flex;
-      gap: 8px;
     }}
     .btn {{
       padding: 8px 16px;
@@ -282,78 +277,69 @@ def generate_html_report(df_summary, config, output_path):
       background: rgba(255,255,255,0.3);
     }}
 
-    /* ── Container Layout (flex) ── */
-    .container {{
-      display: flex;
-      gap: 0;
-      min-height: calc(100vh - 70px);
-    }}
-
-    /* ── Left Sidebar (Table) ── */
-    .sidebar {{
-      flex: 0 0 350px;
+    /* ── Full-Width Table Section ── */
+    .table-section {{
       background: #fff;
-      border-right: 1px solid #ddd;
-      overflow-y: auto;
-      padding: 16px;
-      box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+      border-bottom: 1px solid #ddd;
+      padding: 16px 20px;
     }}
-    .dark-mode .sidebar {{
+    .dark-mode .table-section {{
       background: #2a2a2a;
-      border-right-color: #444;
+      border-bottom-color: #444;
     }}
-    .sidebar-header {{
+    .table-header {{
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }}
-    .sidebar-header h2 {{
+    .table-header h2 {{
       margin: 0;
       font-size: 1.1em;
       color: #2c5f8a;
     }}
-    .dark-mode .sidebar-header h2 {{
+    .dark-mode .table-header h2 {{
       color: #5eb3e6;
     }}
     .search-box {{
-      width: 100%;
-      padding: 8px;
+      padding: 6px 12px;
       border: 1px solid #ddd;
       border-radius: 4px;
-      margin-bottom: 12px;
       font-size: 0.9em;
+      width: 220px;
     }}
     .dark-mode .search-box {{
       background: #3a3a3a;
       border-color: #555;
       color: #e0e0e0;
     }}
+    .table-scroll {{
+      overflow-x: auto;
+    }}
 
     /* ── Summary Table ── */
     .summary-table {{
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85em;
+      font-size: 0.9em;
     }}
     .summary-table th {{
       background: #2c5f8a;
       color: #fff;
-      padding: 8px 8px;
+      padding: 10px 12px;
       text-align: left;
-      font-size: 0.8em;
-      position: sticky;
-      top: 0;
-      z-index: 10;
+      font-size: 0.85em;
+      white-space: nowrap;
     }}
     .dark-mode .summary-table th {{
       background: #0d2d47;
     }}
     .summary-table td {{
-      padding: 6px 8px;
+      padding: 10px 12px;
       border-bottom: 1px solid #eee;
       cursor: pointer;
       transition: background 0.15s;
+      white-space: nowrap;
     }}
     .dark-mode .summary-table td {{
       border-bottom-color: #444;
@@ -382,31 +368,25 @@ def generate_html_report(df_summary, config, output_path):
     /* Wind speed badge */
     .badge {{
       display: inline-block;
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 10px;
       font-weight: 700;
-      font-size: 0.75em;
+      font-size: 0.8em;
     }}
     .badge-strong  {{ background: #f0ad4e; color: #5a3a00; }}
     .badge-moderate {{ background: #5cb85c; color: #fff; }}
     .badge-light   {{ background: #d9d9d9; color: #555; }}
 
-    /* ── Main Content Area (Right) ── */
-    .main-content {{
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      background: #f0f4f8;
-    }}
-    .dark-mode .main-content {{
-      background: #1a1a1a;
+    /* ── Chart Section (Below Table) ── */
+    .chart-section {{
+      padding: 20px;
     }}
 
     /* ── Info Card ── */
     .info-card {{
       background: #fff;
       border-radius: 6px;
-      padding: 16px;
+      padding: 16px 20px;
       margin-bottom: 16px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       border-left: 4px solid #2c5f8a;
@@ -425,19 +405,15 @@ def generate_html_report(df_summary, config, output_path):
       color: #5eb3e6;
     }}
     .info-grid {{
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
       font-size: 0.9em;
     }}
     .info-item {{
       display: flex;
-      justify-content: space-between;
+      gap: 8px;
       padding: 6px 0;
-      border-bottom: 1px solid #eee;
-    }}
-    .dark-mode .info-item {{
-      border-bottom-color: #444;
     }}
     .info-item .label {{
       color: #666;
@@ -460,7 +436,7 @@ def generate_html_report(df_summary, config, output_path):
       border-radius: 6px;
       padding: 12px;
       box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-      overflow: hidden;
+      min-height: 400px;
     }}
     .dark-mode .chart-container {{
       background: #2a2a2a;
@@ -477,35 +453,30 @@ def generate_html_report(df_summary, config, output_path):
     }}
 
     /* ── Responsive Design ── */
-    @media (max-width: 1024px) {{
-      .sidebar {{
-        flex: 0 0 300px;
-      }}
-      .info-grid {{
-        grid-template-columns: 1fr;
-      }}
-    }}
     @media (max-width: 768px) {{
-      .container {{
+      .table-header {{
         flex-direction: column;
+        gap: 8px;
+        align-items: stretch;
       }}
-      .sidebar {{
-        flex: 0 0 auto;
-        max-height: 300px;
-        border-right: none;
-        border-bottom: 1px solid #ddd;
-      }}
-      .dark-mode .sidebar {{
-        border-bottom-color: #444;
+      .search-box {{
+        width: 100%;
       }}
       .summary-table {{
-        font-size: 0.75em;
+        font-size: 0.8em;
       }}
       .summary-table th, .summary-table td {{
-        padding: 4px 4px;
+        padding: 8px 6px;
       }}
       h1 {{
-        font-size: 1.2em;
+        font-size: 1.1em;
+      }}
+      .info-grid {{
+        flex-direction: column;
+        gap: 4px;
+      }}
+      .chart-section {{
+        padding: 12px;
       }}
     }}
   </style>
@@ -514,42 +485,38 @@ def generate_html_report(df_summary, config, output_path):
   <!-- Header -->
   <div class="header">
     <h1>&#127940; Wind Forecast</h1>
-    <div class="header-buttons">
-      <button class="btn" id="toggle-dark" title="Toggle dark mode">🌙</button>
+    <button class="btn" id="toggle-dark" title="Toggle dark mode">&#127769;</button>
+  </div>
+
+  <!-- Table Section (Full Width) -->
+  <div class="table-section">
+    <div class="table-header">
+      <h2>Sites</h2>
+      <input type="text" class="search-box" id="search-box" placeholder="Search sites...">
+    </div>
+    <div class="table-scroll">
+      {table_html}
     </div>
   </div>
 
-  <!-- Container -->
-  <div class="container">
-    <!-- Left Sidebar -->
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>Sites</h2>
-      </div>
-      <input type="text" class="search-box" id="search-box" placeholder="Search sites...">
-      {table_html}
+  <!-- Chart Section (Below Table) -->
+  <div class="chart-section">
+    <div class="info-card" id="info-card" style="display: none;">
+      <div class="info-card-title" id="info-title">Select a site</div>
+      <div class="info-grid" id="info-grid"></div>
     </div>
-
-    <!-- Right Main Content -->
-    <div class="main-content">
-      <div class="info-card" id="info-card" style="display: none;">
-        <div class="info-card-title" id="info-title">Select a site</div>
-        <div class="info-grid" id="info-grid"></div>
-      </div>
-      <div class="chart-container" id="chart-container">
-        <div class="empty-state">Select a site from the list to view its forecast</div>
-      </div>
+    <div class="chart-container" id="chart-container">
+      <div class="empty-state">Select a site from the list to view its forecast</div>
     </div>
   </div>
 
   <script>
-    // Chart data embedded
+    // Chart data embedded as JSON (figure data + stats)
     const chartData = {chart_data_json};
 
     // Dark mode toggle
     const toggleDark = document.getElementById('toggle-dark');
-    const isDarkMode = localStorage.getItem('darkMode') === 'true';
-    if (isDarkMode) document.body.classList.add('dark-mode');
+    if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
 
     toggleDark.addEventListener('click', () => {{
       document.body.classList.toggle('dark-mode');
@@ -557,12 +524,10 @@ def generate_html_report(df_summary, config, output_path):
     }});
 
     // Search functionality
-    const searchBox = document.getElementById('search-box');
-    searchBox.addEventListener('input', (e) => {{
+    document.getElementById('search-box').addEventListener('input', (e) => {{
       const query = e.target.value.toLowerCase();
       document.querySelectorAll('.summary-table tbody tr.table-row').forEach(row => {{
-        const siteName = row.textContent.toLowerCase();
-        row.style.display = siteName.includes(query) ? '' : 'none';
+        row.style.display = row.textContent.toLowerCase().includes(query) ? '' : 'none';
       }});
     }});
 
@@ -576,48 +541,32 @@ def generate_html_report(df_summary, config, output_path):
     function selectChart(index, siteName) {{
       // Update active row
       document.querySelectorAll('.summary-table tbody tr.table-row').forEach(r => r.classList.remove('active'));
-      document.querySelectorAll('.summary-table tbody tr.table-row')[index].classList.add('active');
+      const rows = document.querySelectorAll('.summary-table tbody tr.table-row');
+      if (rows[index]) rows[index].classList.add('active');
 
-      // Update chart
       const chart = chartData[siteName];
       if (!chart) return;
 
-      document.getElementById('chart-container').innerHTML = chart.html;
+      // Render chart using Plotly
+      const container = document.getElementById('chart-container');
+      container.innerHTML = '<div id="plotly-chart" style="width:100%;"></div>';
+      const fig = chart.figure;
+      Plotly.newPlot('plotly-chart', fig.data, fig.layout, {{responsive: true}});
 
       // Update info card
       const info = chart.stats;
       document.getElementById('info-card').style.display = 'block';
       document.getElementById('info-title').textContent = siteName;
-      document.getElementById('info-grid').innerHTML = `
-        <div class="info-item">
-          <span class="label">Avg Wind:</span>
-          <span class="value">${{info.avg_wind.toFixed(1)}} kn</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Max Wind:</span>
-          <span class="value">${{info.max_wind.toFixed(1)}} kn</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Max Gust:</span>
-          <span class="value">${{info.max_gust.toFixed(1)}} kn</span>
-        </div>
-        <div class="info-item">
-          <span class="label">Direction:</span>
-          <span class="value">${{info.direction}}°</span>
-        </div>
-      `;
-
-      // Re-attach Plotly listeners if needed
-      if (window.Plotly) {{
-        setTimeout(() => window.Plotly.Plots.resize('plotly-div'), 100);
-      }}
+      document.getElementById('info-grid').innerHTML =
+        '<div class="info-item"><span class="label">Avg Wind:</span><span class="value">' + info.avg_wind.toFixed(1) + ' kn</span></div>' +
+        '<div class="info-item"><span class="label">Max Wind:</span><span class="value">' + info.max_wind.toFixed(1) + ' kn</span></div>' +
+        '<div class="info-item"><span class="label">Max Gust:</span><span class="value">' + info.max_gust.toFixed(1) + ' kn</span></div>' +
+        '<div class="info-item"><span class="label">Direction:</span><span class="value">' + info.direction.toFixed(0) + '\u00b0</span></div>';
     }}
 
     // Auto-select first site on load
     const firstRow = document.querySelector('.summary-table tbody tr.table-row');
-    if (firstRow) {{
-      firstRow.click();
-    }}
+    if (firstRow) firstRow.click();
   </script>
 </body>
 </html>"""

@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt selenium beautifulsoup4
+          pip install -r requirements.txt
 
       - name: Generate forecast report
         env:

@@ -1,5 +1,6 @@
 import os
 import re
+import json
 from datetime import timedelta
 
 import numpy as np
@@ -58,6 +59,16 @@ def _wind_assessment(df):
 def _site_anchor_id(site_name):
     """Convert site name to a valid HTML anchor ID."""
     return "chart-" + re.sub(r"[^\w-]", "-", site_name).strip("-").lower()
+
+
+def _calculate_site_stats(df):
+    """Calculate statistics for a site."""
+    return {
+        "avg_wind": float(df["wind_speed"].mean()),
+        "max_wind": float(df["wind_speed"].max()),
+        "max_gust": float(df["wind_gust"].max()),
+        "direction": float(df["wind_dir"].mean()),
+    }
 
 
 def _make_site_figure(df, site_name):
@@ -139,9 +150,8 @@ def _build_summary_table(df_summary, chart_sites):
     header = (
         "<thead><tr>"
         "<th>Site</th>"
-        "<th>Wind Window</th>"
-        "<th>Avg Wind (kn)</th>"
-        "<th>Direction</th>"
+        "<th>Avg Wind</th>"
+        "<th>Dir</th>"
         "</tr></thead>"
     )
     rows = []
@@ -160,16 +170,9 @@ def _build_summary_table(df_summary, chart_sites):
             row_class = "wind-light"
             badge = f'<span class="badge badge-light">{wind:.1f}</span>'
 
-        if site in chart_sites:
-            anchor = _site_anchor_id(site)
-            site_cell = f'<a href="#{anchor}" class="site-link">{site}</a>'
-        else:
-            site_cell = site
-
         rows.append(
-            f'<tr class="{row_class}">'
-            f"<td>{site_cell}</td>"
-            f"<td>{row['Window']}</td>"
+            f'<tr class="{row_class} table-row">'
+            f"<td><strong>{site}</strong></td>"
             f"<td>{badge}</td>"
             f"<td>{arrow}</td>"
             f"</tr>"
@@ -190,8 +193,8 @@ def generate_html_report(df_summary, config, output_path):
     sites = set(df_summary["Site"].tolist())
     site_data = _load_site_data(config, sites)
 
-    # Build per-site chart HTML fragments
-    chart_fragments = []  # list of (site_name, html_fragment)
+    # Build per-site chart data (both HTML and stats)
+    chart_data = {}  # dict: site_name -> {html, stats}
     include_js = True  # embed plotly.js only once (in the first chart)
     for _, row in df_summary.iterrows():
         site = row["Site"]
@@ -204,31 +207,20 @@ def generate_html_report(df_summary, config, output_path):
             full_html=False,
             config={"responsive": True},
         )
-        chart_fragments.append((site, fragment))
+        stats = _calculate_site_stats(site_data[site])
+        chart_data[site] = {
+            "html": fragment,
+            "stats": stats,
+        }
         include_js = False  # subsequent charts reuse the already-loaded plotly.js
 
-    chart_sites = {site for site, _ in chart_fragments}
+    chart_sites = set(chart_data.keys())
 
     # Build interactive summary table
     table_html = _build_summary_table(df_summary, chart_sites)
 
-    # Build charts section with anchor IDs and back-to-top links
-    chart_divs = []
-    for site, frag in chart_fragments:
-        anchor = _site_anchor_id(site)
-        chart_divs.append(
-            f'<div class="chart-wrapper" id="{anchor}">'
-            f"{frag}"
-            f'<div class="back-to-top-link"><a href="#summary">&#8593; Back to summary</a></div>'
-            f"</div>"
-        )
-    charts_section = "\n".join(chart_divs)
-
-    no_charts_msg = (
-        ""
-        if chart_fragments
-        else "<p>No site data available to display.</p>"
-    )
+    # Convert chart data to JavaScript-safe JSON
+    chart_data_json = json.dumps(chart_data)
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -242,180 +234,390 @@ def generate_html_report(df_summary, config, output_path):
     body {{
       font-family: Arial, Helvetica, sans-serif;
       margin: 0;
-      padding: 16px;
+      padding: 0;
       background: #f0f4f8;
       color: #222;
+      transition: background 0.3s, color 0.3s;
+    }}
+    body.dark-mode {{
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }}
+
+    /* ── Header ── */
+    .header {{
+      background: linear-gradient(135deg, #2c5f8a 0%, #1a3d5c 100%);
+      color: #fff;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .dark-mode .header {{
+      background: linear-gradient(135deg, #0d2d47 0%, #000 100%);
     }}
     h1 {{
-      text-align: center;
       font-size: 1.6em;
-      margin: 0 0 28px;
+      margin: 0;
+      flex: 1;
+      text-align: center;
     }}
-    h2 {{
+    .header-buttons {{
+      display: flex;
+      gap: 8px;
+    }}
+    .btn {{
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.9em;
+      transition: background 0.2s;
+    }}
+    .btn:hover {{
+      background: rgba(255,255,255,0.3);
+    }}
+
+    /* ── Container Layout (flex) ── */
+    .container {{
+      display: flex;
+      gap: 0;
+      min-height: calc(100vh - 70px);
+    }}
+
+    /* ── Left Sidebar (Table) ── */
+    .sidebar {{
+      flex: 0 0 350px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      overflow-y: auto;
+      padding: 16px;
+      box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+    }}
+    .dark-mode .sidebar {{
+      background: #2a2a2a;
+      border-right-color: #444;
+    }}
+    .sidebar-header {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }}
+    .sidebar-header h2 {{
+      margin: 0;
       font-size: 1.1em;
       color: #2c5f8a;
-      margin: 28px 0 10px;
-      padding-bottom: 4px;
-      border-bottom: 2px solid #2c5f8a;
+    }}
+    .dark-mode .sidebar-header h2 {{
+      color: #5eb3e6;
+    }}
+    .search-box {{
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      font-size: 0.9em;
+    }}
+    .dark-mode .search-box {{
+      background: #3a3a3a;
+      border-color: #555;
+      color: #e0e0e0;
     }}
 
     /* ── Summary Table ── */
     .summary-table {{
       width: 100%;
       border-collapse: collapse;
-      background: #fff;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 28px;
+      font-size: 0.85em;
     }}
     .summary-table th {{
       background: #2c5f8a;
       color: #fff;
-      padding: 10px 14px;
+      padding: 8px 8px;
       text-align: left;
-      font-size: 0.9em;
-      white-space: nowrap;
+      font-size: 0.8em;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }}
+    .dark-mode .summary-table th {{
+      background: #0d2d47;
     }}
     .summary-table td {{
-      padding: 8px 14px;
+      padding: 6px 8px;
       border-bottom: 1px solid #eee;
-      font-size: 0.9em;
+      cursor: pointer;
+      transition: background 0.15s;
+    }}
+    .dark-mode .summary-table td {{
+      border-bottom-color: #444;
     }}
     .summary-table tr:last-child td {{ border-bottom: none; }}
-    .summary-table tr:hover td {{ background: #eef4fb; cursor: default; }}
+    .summary-table tr.table-row:hover td {{ background: #eef4fb; }}
+    .dark-mode .summary-table tr.table-row:hover td {{ background: #3a4a5a; }}
 
-    /* Clickable site link */
-    .site-link {{
-      color: #2c5f8a;
+    /* Selected row in table */
+    .summary-table tr.table-row.active td {{
+      background: #d4e8f7;
       font-weight: 600;
-      text-decoration: none;
-      border-bottom: 1px dashed #2c5f8a;
-      transition: color 0.2s, border-color 0.2s;
     }}
-    .site-link:hover {{
-      color: #1a3d5c;
-      border-bottom-style: solid;
+    .dark-mode .summary-table tr.table-row.active td {{
+      background: #2a5a8a;
     }}
 
     /* Wind speed row colors */
     .wind-strong td {{ background: #fff3cd; }}
-    .wind-strong:hover td {{ background: #ffe8a0 !important; }}
     .wind-moderate td {{ background: #d4edda; }}
-    .wind-moderate:hover td {{ background: #b8dfc5 !important; }}
-    .wind-light td {{ background: #fff; }}
+    .wind-light td {{ background: #f5f5f5; }}
+    .dark-mode .wind-strong td {{ background: #5a4a20; }}
+    .dark-mode .wind-moderate td {{ background: #2a5a3a; }}
+    .dark-mode .wind-light td {{ background: #3a3a3a; }}
 
     /* Wind speed badge */
     .badge {{
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 12px;
+      padding: 2px 6px;
+      border-radius: 10px;
       font-weight: 700;
-      font-size: 0.85em;
+      font-size: 0.75em;
     }}
     .badge-strong  {{ background: #f0ad4e; color: #5a3a00; }}
     .badge-moderate {{ background: #5cb85c; color: #fff; }}
     .badge-light   {{ background: #d9d9d9; color: #555; }}
 
-    /* ── Chart Wrappers ── */
-    .chart-wrapper {{
+    /* ── Main Content Area (Right) ── */
+    .main-content {{
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f0f4f8;
+    }}
+    .dark-mode .main-content {{
+      background: #1a1a1a;
+    }}
+
+    /* ── Info Card ── */
+    .info-card {{
       background: #fff;
       border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      border-left: 4px solid #2c5f8a;
+    }}
+    .dark-mode .info-card {{
+      background: #2a2a2a;
+      border-left-color: #5eb3e6;
+    }}
+    .info-card-title {{
+      font-size: 1.2em;
+      font-weight: 600;
+      margin: 0 0 12px;
+      color: #2c5f8a;
+    }}
+    .dark-mode .info-card-title {{
+      color: #5eb3e6;
+    }}
+    .info-grid {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      font-size: 0.9em;
+    }}
+    .info-item {{
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
+    }}
+    .dark-mode .info-item {{
+      border-bottom-color: #444;
+    }}
+    .info-item .label {{
+      color: #666;
+      font-weight: 600;
+    }}
+    .dark-mode .info-item .label {{
+      color: #aaa;
+    }}
+    .info-item .value {{
+      color: #2c5f8a;
+      font-weight: 700;
+    }}
+    .dark-mode .info-item .value {{
+      color: #5eb3e6;
+    }}
+
+    /* ── Chart Container ── */
+    .chart-container {{
+      background: #fff;
+      border-radius: 6px;
+      padding: 12px;
       box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-      padding: 12px 12px 4px;
       overflow: hidden;
-      border: 2px solid transparent;
-      transition: border-color 0.3s;
+    }}
+    .dark-mode .chart-container {{
+      background: #2a2a2a;
     }}
 
-    /* Highlight animation when navigated to via anchor */
-    @keyframes highlight-chart {{
-      0%   {{ border-color: #2c5f8a; box-shadow: 0 0 0 4px rgba(44,95,138,0.25); }}
-      70%  {{ border-color: #2c5f8a; box-shadow: 0 0 0 4px rgba(44,95,138,0.1); }}
-      100% {{ border-color: transparent; box-shadow: 0 1px 6px rgba(0,0,0,0.1); }}
+    /* ── Empty State ── */
+    .empty-state {{
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
     }}
-    .chart-wrapper:target {{
-      animation: highlight-chart 1.8s ease forwards;
+    .dark-mode .empty-state {{
+      color: #666;
     }}
 
-    /* Back-to-summary link inside each chart */
-    .back-to-top-link {{
-      text-align: right;
-      padding: 4px 6px 6px;
+    /* ── Responsive Design ── */
+    @media (max-width: 1024px) {{
+      .sidebar {{
+        flex: 0 0 300px;
+      }}
+      .info-grid {{
+        grid-template-columns: 1fr;
+      }}
     }}
-    .back-to-top-link a {{
-      font-size: 0.8em;
-      color: #888;
-      text-decoration: none;
-    }}
-    .back-to-top-link a:hover {{ color: #2c5f8a; }}
-
-    /* ── Floating back-to-top button ── */
-    #btn-top {{
-      position: fixed;
-      bottom: 24px;
-      right: 24px;
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      background: #2c5f8a;
-      color: #fff;
-      font-size: 1.3em;
-      border: none;
-      cursor: pointer;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.2s, transform 0.2s;
-      z-index: 999;
-    }}
-    #btn-top:hover {{ background: #1a3d5c; transform: scale(1.1); }}
-
-    @media (max-width: 600px) {{
-      body {{ padding: 8px; }}
-      h1 {{ font-size: 1.2em; }}
+    @media (max-width: 768px) {{
+      .container {{
+        flex-direction: column;
+      }}
+      .sidebar {{
+        flex: 0 0 auto;
+        max-height: 300px;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+      }}
+      .dark-mode .sidebar {{
+        border-bottom-color: #444;
+      }}
+      .summary-table {{
+        font-size: 0.75em;
+      }}
+      .summary-table th, .summary-table td {{
+        padding: 4px 4px;
+      }}
+      h1 {{
+        font-size: 1.2em;
+      }}
     }}
   </style>
 </head>
 <body>
-  <h1>&#127940; Wind Forecast Report</h1>
+  <!-- Header -->
+  <div class="header">
+    <h1>&#127940; Wind Forecast</h1>
+    <div class="header-buttons">
+      <button class="btn" id="toggle-dark" title="Toggle dark mode">🌙</button>
+    </div>
+  </div>
 
-  <h2 id="summary">Summary</h2>
-  {table_html}
+  <!-- Container -->
+  <div class="container">
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>Sites</h2>
+      </div>
+      <input type="text" class="search-box" id="search-box" placeholder="Search sites...">
+      {table_html}
+    </div>
 
-  <h2>Site Charts</h2>
-  {no_charts_msg}
-  {charts_section}
-
-  <!-- Floating back-to-top button -->
-  <button id="btn-top" title="Back to top">&#8679;</button>
+    <!-- Right Main Content -->
+    <div class="main-content">
+      <div class="info-card" id="info-card" style="display: none;">
+        <div class="info-card-title" id="info-title">Select a site</div>
+        <div class="info-grid" id="info-grid"></div>
+      </div>
+      <div class="chart-container" id="chart-container">
+        <div class="empty-state">Select a site from the list to view its forecast</div>
+      </div>
+    </div>
+  </div>
 
   <script>
-    // Show/hide floating back-to-top button
-    const btnTop = document.getElementById('btn-top');
-    window.addEventListener('scroll', () => {{
-      btnTop.style.display = window.scrollY > 300 ? 'flex' : 'none';
-    }});
-    btnTop.addEventListener('click', () => {{
-      window.scrollTo({{ top: 0, behavior: 'smooth' }});
+    // Chart data embedded
+    const chartData = {chart_data_json};
+
+    // Dark mode toggle
+    const toggleDark = document.getElementById('toggle-dark');
+    const isDarkMode = localStorage.getItem('darkMode') === 'true';
+    if (isDarkMode) document.body.classList.add('dark-mode');
+
+    toggleDark.addEventListener('click', () => {{
+      document.body.classList.toggle('dark-mode');
+      localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
     }});
 
-    // Add smooth offset scroll for anchor links (accounts for any sticky header)
-    document.querySelectorAll('a[href^="#"]').forEach(link => {{
-      link.addEventListener('click', e => {{
-        const target = document.querySelector(link.getAttribute('href'));
-        if (!target) return;
-        e.preventDefault();
-        const top = target.getBoundingClientRect().top + window.scrollY - 12;
-        window.scrollTo({{ top, behavior: 'smooth' }});
-        // Trigger :target-like highlight manually (re-add class trick)
-        target.classList.remove('chart-wrapper');
-        void target.offsetWidth; // reflow
-        target.classList.add('chart-wrapper');
+    // Search functionality
+    const searchBox = document.getElementById('search-box');
+    searchBox.addEventListener('input', (e) => {{
+      const query = e.target.value.toLowerCase();
+      document.querySelectorAll('.summary-table tbody tr.table-row').forEach(row => {{
+        const siteName = row.textContent.toLowerCase();
+        row.style.display = siteName.includes(query) ? '' : 'none';
       }});
     }});
+
+    // Click handlers for table rows
+    document.querySelectorAll('.summary-table tbody tr.table-row').forEach((row, idx) => {{
+      row.addEventListener('click', () => {{
+        selectChart(idx, row.cells[0].textContent.trim());
+      }});
+    }});
+
+    function selectChart(index, siteName) {{
+      // Update active row
+      document.querySelectorAll('.summary-table tbody tr.table-row').forEach(r => r.classList.remove('active'));
+      document.querySelectorAll('.summary-table tbody tr.table-row')[index].classList.add('active');
+
+      // Update chart
+      const chart = chartData[siteName];
+      if (!chart) return;
+
+      document.getElementById('chart-container').innerHTML = chart.html;
+
+      // Update info card
+      const info = chart.stats;
+      document.getElementById('info-card').style.display = 'block';
+      document.getElementById('info-title').textContent = siteName;
+      document.getElementById('info-grid').innerHTML = `
+        <div class="info-item">
+          <span class="label">Avg Wind:</span>
+          <span class="value">${{info.avg_wind.toFixed(1)}} kn</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Max Wind:</span>
+          <span class="value">${{info.max_wind.toFixed(1)}} kn</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Max Gust:</span>
+          <span class="value">${{info.max_gust.toFixed(1)}} kn</span>
+        </div>
+        <div class="info-item">
+          <span class="label">Direction:</span>
+          <span class="value">${{info.direction}}°</span>
+        </div>
+      `;
+
+      // Re-attach Plotly listeners if needed
+      if (window.Plotly) {{
+        setTimeout(() => window.Plotly.Plots.resize('plotly-div'), 100);
+      }}
+    }}
+
+    // Auto-select first site on load
+    const firstRow = document.querySelector('.summary-table tbody tr.table-row');
+    if (firstRow) {{
+      firstRow.click();
+    }}
   </script>
 </body>
 </html>"""

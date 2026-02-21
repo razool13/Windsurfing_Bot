@@ -5,4 +5,4 @@ requests
 pillow
 dataframe_image
 plotly
-selenium
+beautifulsoup4

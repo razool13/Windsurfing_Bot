@@ -1,29 +1,24 @@
 import requests
 import os
 import zipfile
-from bs4 import BeautifulSoup
+from datetime import date, timedelta
 
 
 def download_latest_forecast_zip(config):
-    def find_latest_zip_url(base_url="https://openskiron.org/he/%D7%A7%D7%91%D7%A6%D7%99%D7%9D-%D7%9C%D7%94%D7%95%D7%A8%D7%93%D7%94"):
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        response = requests.get(base_url, headers=headers, timeout=30)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-
-        zip_links = [
-            a['href'] for a in soup.find_all('a', href=True)
-            if "all_1km_files.zip" in a['href']
-        ]
-
-        if not zip_links:
-            raise FileNotFoundError("לא נמצאו קבצים עם all_1km_files.zip באתר.")
-
-        zip_links.sort(reverse=True)
-        latest_zip_url = zip_links[0] if zip_links[0].startswith("http") else base_url + zip_links[0]
-
-        print(f"✅ Found latest ZIP: {latest_zip_url}")
-        return latest_zip_url
+    def find_latest_zip_url():
+        base = "https://openskiron.org/kite_gribs"
+        for days_ago in range(5):
+            d = (date.today() - timedelta(days=days_ago)).strftime("%Y%m%d")
+            url = f"{base}/{d}-all_1km_files.zip"
+            try:
+                resp = requests.head(url, timeout=15, allow_redirects=True)
+                if resp.status_code == 200:
+                    print(f"✅ Found latest ZIP: {url}")
+                    return url
+                print(f"   {url} → {resp.status_code}")
+            except Exception as e:
+                print(f"   {url} → error: {e}")
+        raise FileNotFoundError("Could not find a recent ZIP on openskiron.org (tried last 5 days)")
 
     zip_path = config["ZIP_FILE"]
     extract_dir = config["EXTRACT_DIR"]
@@ -45,15 +40,9 @@ def download_latest_forecast_zip(config):
 
     print("💾 Extracting ZIP...")
     if os.path.exists(extract_dir):
-        for filename in os.listdir(extract_dir):
-            file_path = os.path.join(extract_dir, filename)
-            if os.path.isfile(file_path):
-                os.remove(file_path)
-            elif os.path.isdir(file_path):
-                import shutil
-                shutil.rmtree(file_path)
-    else:
-        os.makedirs(extract_dir)
+        import shutil
+        shutil.rmtree(extract_dir)
+    os.makedirs(extract_dir)
 
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(extract_dir)

@@ -1,4 +1,6 @@
 import glob
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for cross-platform / CI compatibility
 import matplotlib.pyplot as plt
 from PIL import Image
 import os

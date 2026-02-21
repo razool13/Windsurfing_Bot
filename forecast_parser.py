@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import numpy as np
 from datetime import datetime
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend for cross-platform / CI compatibility
 import matplotlib.pyplot as plt
 
 def parse_datetime(val):

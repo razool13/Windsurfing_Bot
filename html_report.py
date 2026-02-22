@@ -248,7 +248,7 @@ def generate_html_report(df_summary, config, output_path):
     .header {{
       background: linear-gradient(135deg, #2c5f8a 0%, #1a3d5c 100%);
       color: #fff;
-      padding: 14px 20px;
+      padding: 12px 20px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       display: flex;
       justify-content: space-between;
@@ -258,13 +258,13 @@ def generate_html_report(df_summary, config, output_path):
       background: linear-gradient(135deg, #0d2d47 0%, #000 100%);
     }}
     h1 {{
-      font-size: 1.4em;
+      font-size: 1.3em;
       margin: 0;
       flex: 1;
       text-align: center;
     }}
     .btn {{
-      padding: 8px 16px;
+      padding: 6px 14px;
       border: none;
       border-radius: 4px;
       background: rgba(255,255,255,0.2);
@@ -277,36 +277,52 @@ def generate_html_report(df_summary, config, output_path):
       background: rgba(255,255,255,0.3);
     }}
 
-    /* ── Full-Width Table Section ── */
-    .table-section {{
+    /* ── Container Layout (sidebar + main) ── */
+    .container {{
+      display: flex;
+      height: calc(100vh - 52px);
+      overflow: hidden;
+    }}
+
+    /* ── Left Sidebar (Table) ── */
+    .sidebar {{
+      flex: 0 0 420px;
       background: #fff;
-      border-bottom: 1px solid #ddd;
-      padding: 16px 20px;
+      border-right: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }}
-    .dark-mode .table-section {{
+    .dark-mode .sidebar {{
       background: #2a2a2a;
-      border-bottom-color: #444;
+      border-right-color: #444;
     }}
-    .table-header {{
+    .sidebar-header {{
+      padding: 12px 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }}
+    .sidebar-title-row {{
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
     }}
-    .table-header h2 {{
+    .sidebar-title-row h2 {{
       margin: 0;
-      font-size: 1.1em;
+      font-size: 1em;
       color: #2c5f8a;
     }}
-    .dark-mode .table-header h2 {{
+    .dark-mode .sidebar-title-row h2 {{
       color: #5eb3e6;
     }}
     .search-box {{
-      padding: 6px 12px;
+      width: 100%;
+      padding: 6px 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
-      font-size: 0.9em;
-      width: 220px;
+      font-size: 0.85em;
     }}
     .dark-mode .search-box {{
       background: #3a3a3a;
@@ -314,28 +330,33 @@ def generate_html_report(df_summary, config, output_path):
       color: #e0e0e0;
     }}
     .table-scroll {{
-      overflow-x: auto;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
     }}
 
     /* ── Summary Table ── */
     .summary-table {{
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9em;
+      font-size: 0.8em;
     }}
     .summary-table th {{
       background: #2c5f8a;
       color: #fff;
-      padding: 10px 12px;
+      padding: 7px 6px;
       text-align: left;
-      font-size: 0.85em;
+      font-size: 0.8em;
       white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }}
     .dark-mode .summary-table th {{
       background: #0d2d47;
     }}
     .summary-table td {{
-      padding: 10px 12px;
+      padding: 6px 6px;
       border-bottom: 1px solid #eee;
       cursor: pointer;
       transition: background 0.15s;
@@ -348,7 +369,6 @@ def generate_html_report(df_summary, config, output_path):
     .summary-table tr.table-row:hover td {{ background: #eef4fb; }}
     .dark-mode .summary-table tr.table-row:hover td {{ background: #3a4a5a; }}
 
-    /* Selected row in table */
     .summary-table tr.table-row.active td {{
       background: #d4e8f7;
       font-weight: 600;
@@ -365,10 +385,9 @@ def generate_html_report(df_summary, config, output_path):
     .dark-mode .wind-moderate td {{ background: #2a5a3a; }}
     .dark-mode .wind-light td {{ background: #3a3a3a; }}
 
-    /* Wind speed badge */
     .badge {{
       display: inline-block;
-      padding: 3px 8px;
+      padding: 2px 6px;
       border-radius: 10px;
       font-weight: 700;
       font-size: 0.8em;
@@ -377,17 +396,23 @@ def generate_html_report(df_summary, config, output_path):
     .badge-moderate {{ background: #5cb85c; color: #fff; }}
     .badge-light   {{ background: #d9d9d9; color: #555; }}
 
-    /* ── Chart Section (Below Table) ── */
-    .chart-section {{
-      padding: 20px;
+    /* ── Main Content Area (Right) ── */
+    .main-content {{
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      background: #f0f4f8;
+    }}
+    .dark-mode .main-content {{
+      background: #1a1a1a;
     }}
 
     /* ── Info Card ── */
     .info-card {{
       background: #fff;
       border-radius: 6px;
-      padding: 16px 20px;
-      margin-bottom: 16px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
       box-shadow: 0 1px 4px rgba(0,0,0,0.1);
       border-left: 4px solid #2c5f8a;
     }}
@@ -396,9 +421,9 @@ def generate_html_report(df_summary, config, output_path):
       border-left-color: #5eb3e6;
     }}
     .info-card-title {{
-      font-size: 1.2em;
+      font-size: 1.1em;
       font-weight: 600;
-      margin: 0 0 12px;
+      margin: 0 0 8px;
       color: #2c5f8a;
     }}
     .dark-mode .info-card-title {{
@@ -408,12 +433,11 @@ def generate_html_report(df_summary, config, output_path):
       display: flex;
       flex-wrap: wrap;
       gap: 16px;
-      font-size: 0.9em;
+      font-size: 0.85em;
     }}
     .info-item {{
       display: flex;
-      gap: 8px;
-      padding: 6px 0;
+      gap: 6px;
     }}
     .info-item .label {{
       color: #666;
@@ -434,15 +458,14 @@ def generate_html_report(df_summary, config, output_path):
     .chart-container {{
       background: #fff;
       border-radius: 6px;
-      padding: 12px;
+      padding: 10px;
       box-shadow: 0 1px 6px rgba(0,0,0,0.1);
-      min-height: 400px;
+      min-height: 380px;
     }}
     .dark-mode .chart-container {{
       background: #2a2a2a;
     }}
 
-    /* ── Empty State ── */
     .empty-state {{
       text-align: center;
       padding: 60px 20px;
@@ -453,30 +476,25 @@ def generate_html_report(df_summary, config, output_path):
     }}
 
     /* ── Responsive Design ── */
-    @media (max-width: 768px) {{
-      .table-header {{
+    @media (max-width: 900px) {{
+      .container {{
         flex-direction: column;
-        gap: 8px;
-        align-items: stretch;
+        height: auto;
       }}
-      .search-box {{
-        width: 100%;
+      .sidebar {{
+        flex: 0 0 auto;
+        max-height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
       }}
-      .summary-table {{
-        font-size: 0.8em;
+      .dark-mode .sidebar {{
+        border-bottom-color: #444;
       }}
-      .summary-table th, .summary-table td {{
-        padding: 8px 6px;
+      .main-content {{
+        min-height: 50vh;
       }}
       h1 {{
         font-size: 1.1em;
-      }}
-      .info-grid {{
-        flex-direction: column;
-        gap: 4px;
-      }}
-      .chart-section {{
-        padding: 12px;
       }}
     }}
   </style>
@@ -488,42 +506,45 @@ def generate_html_report(df_summary, config, output_path):
     <button class="btn" id="toggle-dark" title="Toggle dark mode">&#127769;</button>
   </div>
 
-  <!-- Table Section (Full Width) -->
-  <div class="table-section">
-    <div class="table-header">
-      <h2>Sites</h2>
-      <input type="text" class="search-box" id="search-box" placeholder="Search sites...">
+  <!-- Container: Sidebar + Main -->
+  <div class="container">
+    <!-- Left Sidebar (Table) -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <h2>Sites</h2>
+        </div>
+        <input type="text" class="search-box" id="search-box" placeholder="Search sites...">
+      </div>
+      <div class="table-scroll">
+        {table_html}
+      </div>
     </div>
-    <div class="table-scroll">
-      {table_html}
-    </div>
-  </div>
 
-  <!-- Chart Section (Below Table) -->
-  <div class="chart-section">
-    <div class="info-card" id="info-card" style="display: none;">
-      <div class="info-card-title" id="info-title">Select a site</div>
-      <div class="info-grid" id="info-grid"></div>
-    </div>
-    <div class="chart-container" id="chart-container">
-      <div class="empty-state">Select a site from the list to view its forecast</div>
+    <!-- Right Main Content (Chart) -->
+    <div class="main-content">
+      <div class="info-card" id="info-card" style="display: none;">
+        <div class="info-card-title" id="info-title">Select a site</div>
+        <div class="info-grid" id="info-grid"></div>
+      </div>
+      <div class="chart-container" id="chart-container">
+        <div class="empty-state">Select a site from the list to view its forecast</div>
+      </div>
     </div>
   </div>
 
   <script>
-    // Chart data embedded as JSON (figure data + stats)
     const chartData = {chart_data_json};
 
     // Dark mode toggle
     const toggleDark = document.getElementById('toggle-dark');
     if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
-
     toggleDark.addEventListener('click', () => {{
       document.body.classList.toggle('dark-mode');
       localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
     }});
 
-    // Search functionality
+    // Search
     document.getElementById('search-box').addEventListener('input', (e) => {{
       const query = e.target.value.toLowerCase();
       document.querySelectorAll('.summary-table tbody tr.table-row').forEach(row => {{
@@ -531,7 +552,7 @@ def generate_html_report(df_summary, config, output_path):
       }});
     }});
 
-    // Click handlers for table rows
+    // Click handlers
     document.querySelectorAll('.summary-table tbody tr.table-row').forEach((row, idx) => {{
       row.addEventListener('click', () => {{
         selectChart(idx, row.cells[0].textContent.trim());
@@ -539,7 +560,6 @@ def generate_html_report(df_summary, config, output_path):
     }});
 
     function selectChart(index, siteName) {{
-      // Update active row
       document.querySelectorAll('.summary-table tbody tr.table-row').forEach(r => r.classList.remove('active'));
       const rows = document.querySelectorAll('.summary-table tbody tr.table-row');
       if (rows[index]) rows[index].classList.add('active');
@@ -547,7 +567,7 @@ def generate_html_report(df_summary, config, output_path):
       const chart = chartData[siteName];
       if (!chart) return;
 
-      // Render chart using Plotly
+      // Render chart
       const container = document.getElementById('chart-container');
       container.innerHTML = '<div id="plotly-chart" style="width:100%;"></div>';
       const fig = chart.figure;
@@ -564,7 +584,7 @@ def generate_html_report(df_summary, config, output_path):
         '<div class="info-item"><span class="label">Direction:</span><span class="value">' + info.direction.toFixed(0) + '\u00b0</span></div>';
     }}
 
-    // Auto-select first site on load
+    // Auto-select first site
     const firstRow = document.querySelector('.summary-table tbody tr.table-row');
     if (firstRow) firstRow.click();
   </script>

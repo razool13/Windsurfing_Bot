@@ -25,14 +25,27 @@ def circular_mean(degrees_series):
 def is_valid_window(df, config):
     df = df.set_index("datetime")
     df = df.between_time(f"{config['DAY_START_HOUR']}:00", f"{config['DAY_END_HOUR']}:00")
-    df = df[df["wind_speed"] >= config["MIN_WIND_KNOTS"]]
 
-    if len(df) >= config["MIN_BLOCK_LENGTH"]:
-        avg_speed = df["wind_speed"].mean()
-        start_time = df.index.min().strftime('%d/%m %H:%M')
-        end_time = df.index.max().strftime('%H:%M')
-        return f"{start_time}-{end_time}", round(avg_speed, 1), circular_mean(df["wind_dir"])
-    return None, None, None
+    above = df["wind_speed"] >= config["MIN_WIND_KNOTS"]
+    if not above.any():
+        return None, None, None
+
+    # Find the longest consecutive block of readings above threshold
+    groups = (above != above.shift()).cumsum()
+    best_group = None
+    best_len = 0
+    for _, group_df in df[above].groupby(groups[above]):
+        if len(group_df) > best_len:
+            best_len = len(group_df)
+            best_group = group_df
+
+    if best_group is None or best_len < config["MIN_BLOCK_LENGTH"]:
+        return None, None, None
+
+    avg_speed = best_group["wind_speed"].mean()
+    start_time = best_group.index.min().strftime('%d/%m %H:%M')
+    end_time = best_group.index.max().strftime('%H:%M')
+    return f"{start_time}-{end_time}", round(avg_speed, 1), circular_mean(best_group["wind_dir"])
 
 def save_site_plot(df, site_name, output_dir):
     import matplotlib.dates as mdates

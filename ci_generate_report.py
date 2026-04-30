@@ -3,6 +3,7 @@ from forecast_parser import process_forecasts
 from fetch import download_latest_forecast_zip
 from html_report import generate_html_report
 import os
+import sys
 
 _FALLBACK = """<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Wind Forecast</title></head>
@@ -21,14 +22,14 @@ def main():
     except Exception as e:
         print(f"Download failed: {e}")
         write_fallback("Forecast data temporarily unavailable.")
-        return
+        sys.exit(1)
 
     try:
         summary_df = process_forecasts(CONFIG)
     except Exception as e:
         print(f"Processing failed: {e}")
         write_fallback("Error processing forecast data.")
-        return
+        sys.exit(1)
 
     os.makedirs("output", exist_ok=True)
     if summary_df.empty:

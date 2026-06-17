@@ -1,38 +1,35 @@
-import requests, os, zipfile
-from datetime import date, timedelta
+import os, shutil
+import gdown
 
 def download_latest_forecast_zip(config):
-    def find_latest_zip_url():
-        base = "https://openskiron.org/kite_gribs"
-        for days_ago in range(5):
-            d = (date.today() - timedelta(days=days_ago)).strftime("%Y%m%d")
-            url = f"{base}/{d}-all_1km_files.zip"
-            try:
-                r = requests.head(url, timeout=15, allow_redirects=True)
-                if r.status_code == 200:
-                    print(f"Found: {url}")
-                    return url
-            except Exception as e:
-                print(f"  {url} -> {e}")
-        raise FileNotFoundError("No recent ZIP found (tried 5 days)")
+    """Download the latest per-site forecast CSV files from the public Google Drive folder.
 
-    url = find_latest_zip_url()
-    print("Downloading...")
-    r = requests.get(url, timeout=120)
-    if r.status_code != 200:
-        raise Exception(f"Download failed: {r.status_code}")
-
-    zip_path = config["ZIP_FILE"]
-    os.makedirs(os.path.dirname(zip_path), exist_ok=True)
-    with open(zip_path, "wb") as f:
-        f.write(r.content)
-
-    import shutil
+    The folder holds the CSV files directly (the same files that used to live inside the
+    openskiron ZIP), so no archive extraction is needed. Files are downloaded straight into
+    EXTRACT_DIR, where process_forecasts() picks them up via os.walk.
+    """
     extract_dir = config["EXTRACT_DIR"]
     if os.path.exists(extract_dir):
         shutil.rmtree(extract_dir)
     os.makedirs(extract_dir)
 
-    with zipfile.ZipFile(zip_path, "r") as z:
-        z.extractall(extract_dir)
-    print("Extracted.")
+    folder_url = config["DRIVE_FOLDER_URL"]
+    print(f"Downloading forecast CSVs from Google Drive folder: {folder_url}")
+    gdown.download_folder(
+        url=folder_url,
+        output=extract_dir,
+        quiet=False,
+        use_cookies=False,
+    )
+
+    csv_count = sum(
+        1
+        for _, _, files in os.walk(extract_dir)
+        for f in files
+        if f.endswith(".csv")
+    )
+    if csv_count == 0:
+        raise FileNotFoundError(
+            f"No CSV files downloaded from Drive folder into {extract_dir}"
+        )
+    print(f"Downloaded {csv_count} CSV file(s).")

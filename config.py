@@ -1,8 +1,7 @@
 import os
 
 CONFIG = {
-    "ZIP_URL": "https://openskiron.org/kite_gribs/20250507-all_1km_files.zip",
-    "ZIP_FILE": "data/forecast_data.zip",
+    "DRIVE_FOLDER_URL": "https://drive.google.com/drive/folders/10GnORHA94DO-99q9vAcvBthgS4X4MEp-",
     "EXTRACT_DIR": "data/unzipped_forecasts",
     "GRAPH_DIR": "data/graphs",
     "COLLAGE_FILE": "output/forecast_collage.jpg",

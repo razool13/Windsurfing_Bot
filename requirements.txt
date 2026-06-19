@@ -4,4 +4,4 @@ numpy
 requests
 pillow
 plotly
-gdown
+gdown>=4.7,<5.0

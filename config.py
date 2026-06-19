@@ -1,7 +1,7 @@
 import os
 
 CONFIG = {
-    "DRIVE_FOLDER_URL": "https://drive.google.com/drive/folders/10GnORHA94DO-99q9vAcvBthgS4X4MEp-",
+    "DRIVE_FOLDER_URL": "https://drive.google.com/drive/folders/1bM40e7nwFQByOAibeuX9o6cvq2tbAKUw",
     "EXTRACT_DIR": "data/unzipped_forecasts",
     "GRAPH_DIR": "data/graphs",
     "COLLAGE_FILE": "output/forecast_collage.jpg",

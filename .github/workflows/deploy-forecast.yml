@@ -1,23 +1,30 @@
-name: Trigger Netlify Build
+name: Build and Deploy to Netlify
 
 on:
   schedule:
     - cron: "0 */6 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  trigger:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Push timestamp to trigger Netlify deploy
-        run: |
-          echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > last_updated.txt
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_updated.txt
-          git commit -m "chore: scheduled rebuild $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          git push
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate forecast report
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          CHAT_ID_RAZ: ${{ secrets.CHAT_ID_RAZ }}
+        run: python ci_generate_report.py
+
+      - name: Deploy to Netlify
+        run: npx netlify-cli deploy --prod --dir output --auth ${{ secrets.NETLIFY_AUTH_TOKEN }} --site ${{ secrets.NETLIFY_SITE_ID }}

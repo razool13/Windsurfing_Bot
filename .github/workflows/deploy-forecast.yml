@@ -42,7 +42,22 @@ jobs:
         with:
           path: ./output
 
-  deploy:
+  # Scheduled deploy (runs automatically on schedule) - does NOT use the protected environment
+  deploy-scheduled:
+    if: ${{ github.event_name == 'schedule' }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Manual deploy (workflow_dispatch) - uses the github-pages environment and will require approvals if configured
+  deploy-manual:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:
